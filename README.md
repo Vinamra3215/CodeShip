@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Codeship
 
-## Getting Started
+A full-stack competitive programming tracker that aggregates profiles from **Codeforces, LeetCode, CodeChef and GeeksforGeeks** into a unified dashboard. Built for IIT Jodhpur students to compare standings, track topic-wise progress and get AI-powered coaching.
 
-First, run the development server:
+## Tech Stack
+
+- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS, Recharts
+- **Backend**: Next.js API Routes, Prisma ORM, NextAuth.js
+- **Database**: PostgreSQL (Neon in prod, Docker locally), Upstash Redis
+- **AI**: Google Gemini API (free tier) with Groq fallback
+- **DevOps**: Vercel, GitHub Actions, Docker (local dev only)
+
+## Local Development
+
+### Prerequisites
+
+- Node.js 20+
+- Docker Desktop
+
+### Setup
 
 ```bash
+git clone https://github.com/Vinamra3215/CodeShip.git
+cd CodeShip
+npm install
+
+docker compose -f docker/docker-compose.yml up -d
+
+cp .env.local.example .env.local
+
+npx prisma migrate dev
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `NEXTAUTH_SECRET` | Random 32-char string for JWT signing |
+| `NEXTAUTH_URL` | Base URL of the app |
+| `GEMINI_API_KEY` | Google AI Studio API key |
+| `GROQ_API_KEY` | Groq API key (AI fallback) |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis endpoint |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis auth token |
+| `CRON_SECRET` | Secret for protecting CRON endpoints |
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/              # Next.js App Router pages and API routes
+├── lib/
+│   ├── fetchers/     # Platform data fetchers (CF, LC, CC, GFG)
+│   └── refresh/      # Staleness detection and sync engine
+├── components/       # Reusable React components
+└── types/            # Shared TypeScript types
+prisma/               # Database schema and migrations
+docker/               # Local dev Docker Compose config
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Roadmap
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Built across 8 weeks — see [planning docs](https://github.com/Vinamra3215/temp-CodeShip) for the full day-wise schedule.
