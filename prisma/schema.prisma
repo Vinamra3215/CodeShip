@@ -6,3 +6,103 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum Platform {
+  CODEFORCES
+  LEETCODE
+  CODECHEF
+  GFG
+}
+
+enum SyncStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+}
+
+enum SyncTrigger {
+  CRON
+  MANUAL
+  STALENESS
+  LOGIN
+}
+
+model User {
+  id           String            @id @default(cuid())
+  email        String            @unique
+  passwordHash String
+  name         String
+  college      String            @default("IIT Jodhpur")
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  profiles     PlatformProfile[]
+  syncJobs     SyncJob[]
+
+  @@map("users")
+}
+
+model PlatformProfile {
+  id             String           @id @default(cuid())
+  userId         String
+  platform       Platform
+  username       String
+  rating         Int?
+  maxRating      Int?
+  rank           String?
+  problemsSolved Int              @default(0)
+  lastFetched    DateTime?
+  rawData        Json?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topicStats     TopicStat[]
+  contestHistory ContestHistory[]
+
+  @@unique([userId, platform])
+  @@index([userId])
+  @@map("platform_profiles")
+}
+
+model TopicStat {
+  id            String          @id @default(cuid())
+  profileId     String
+  topicName     String
+  problemsCount Int             @default(0)
+  lastUpdated   DateTime        @default(now())
+  profile       PlatformProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, topicName])
+  @@index([profileId])
+  @@map("topic_stats")
+}
+
+model ContestHistory {
+  id          String          @id @default(cuid())
+  profileId   String
+  contestName String
+  ratingAfter Int
+  rank        Int
+  date        DateTime
+  profile     PlatformProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@map("contest_history")
+}
+
+model SyncJob {
+  id               String      @id @default(cuid())
+  userId           String
+  platform         Platform
+  status           SyncStatus  @default(PENDING)
+  triggeredBy      SyncTrigger
+  startedAt        DateTime    @default(now())
+  completedAt      DateTime?
+  errorMessage     String?
+  newProblemsFound Int         @default(0)
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([userId, platform])
+  @@map("sync_jobs")
+}
