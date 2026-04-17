@@ -1,32 +1,238 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
-import Link from "next/link";
+"use client";
 
-export default async function DashboardPage() {
-  const session = await auth();
-  if (!session) redirect("/login");
+import useSWR from "swr";
+import Link from "next/link";
+import TopicBarChart from "@/components/charts/TopicBarChart";
+import RatingLineChart from "@/components/charts/RatingLineChart";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+interface TopicStat {
+  topicName: string;
+  problemsCount: number;
+}
+
+interface ContestEntry {
+  contestName: string;
+  ratingAfter: number;
+  rank: number;
+  date: string;
+}
+
+interface PlatformData {
+  username: string;
+  rating: number | null;
+  maxRating: number | null;
+  rank: string | null;
+  problemsSolved: number;
+  lastFetched: string | null;
+  rawData: Record<string, unknown> | null;
+  topicStats: TopicStat[];
+  contestHistory: ContestEntry[];
+}
+
+interface DashboardData {
+  name: string;
+  platforms: Record<string, PlatformData>;
+}
+
+function getRankColor(rank: string | null): string {
+  if (!rank) return "text-zinc-400";
+  const r = rank.toLowerCase();
+  if (r.includes("legendary") || r.includes("tourist")) return "text-red-400";
+  if (r.includes("international grandmaster")) return "text-red-500";
+  if (r.includes("grandmaster")) return "text-red-400";
+  if (r.includes("international master")) return "text-orange-400";
+  if (r.includes("master")) return "text-orange-300";
+  if (r.includes("candidate master")) return "text-violet-400";
+  if (r.includes("expert")) return "text-blue-400";
+  if (r.includes("specialist")) return "text-cyan-400";
+  if (r.includes("pupil")) return "text-green-400";
+  return "text-zinc-400";
+}
+
+function StatCard({
+  label,
+  value,
+  sub,
+  accent,
+}: {
+  label: string;
+  value: string | number;
+  sub?: string;
+  accent?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+      <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+        {label}
+      </p>
+      <p className={`mt-2 text-3xl font-bold ${accent || "text-white"}`}>
+        {value}
+      </p>
+      {sub && <p className="mt-1 text-sm text-zinc-500">{sub}</p>}
+    </div>
+  );
+}
+
+export default function DashboardPage() {
+  const { data, isLoading, error } = useSWR<DashboardData>(
+    "/api/dashboard",
+    fetcher
+  );
+
+  if (isLoading) {
+    return (
+      <main className="px-4 py-10">
+        <div className="mx-auto max-w-6xl">
+          <div className="animate-pulse space-y-6">
+            <div className="h-8 w-64 rounded bg-zinc-800" />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-28 rounded-xl bg-zinc-800" />
+              ))}
+            </div>
+            <div className="h-72 rounded-xl bg-zinc-800" />
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="px-4 py-10">
+        <div className="mx-auto max-w-6xl text-center text-red-400">
+          Failed to load dashboard data.
+        </div>
+      </main>
+    );
+  }
+
+  const cf = data?.platforms?.CODEFORCES as PlatformData | undefined;
+
+  const bestContestRank = cf?.contestHistory?.length
+    ? Math.min(...cf.contestHistory.map((c) => c.rank))
+    : null;
 
   return (
     <main className="px-4 py-10">
       <div className="mx-auto max-w-6xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white">
-            Welcome back, {session.user?.name} 👋
+            Welcome back, {data?.name} 👋
           </h1>
           <p className="mt-2 text-zinc-400">
-            Your competitive programming journey starts here.
+            Your competitive programming stats at a glance.
           </p>
         </div>
 
-        <div className="rounded-xl border border-dashed border-zinc-700 bg-zinc-900/50 p-12 text-center">
-          <p className="text-zinc-400">
-            Dashboard charts and stats coming in Week 2.{" "}
-            <Link href="/settings" className="text-indigo-400 hover:text-indigo-300 underline underline-offset-4">
-              Add your platform handles
-            </Link>{" "}
-            to get started.
-          </p>
-        </div>
+        {!cf ? (
+          <div className="rounded-xl border border-dashed border-zinc-700 bg-zinc-900/50 p-12 text-center">
+            <p className="text-lg font-medium text-zinc-300">
+              No platforms connected yet
+            </p>
+            <p className="mt-2 text-sm text-zinc-500">
+              Head to{" "}
+              <Link
+                href="/settings"
+                className="text-indigo-400 underline underline-offset-4 hover:text-indigo-300"
+              >
+                Settings
+              </Link>{" "}
+              to add your Codeforces handle, then sync your data.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="mb-4 flex items-center gap-3">
+              <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+              <h2 className="text-lg font-semibold text-white">Codeforces</h2>
+              <span className="rounded-full bg-zinc-800 px-2.5 py-0.5 text-xs text-zinc-400">
+                @{cf.username}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard
+                label="Current Rating"
+                value={cf.rating ?? "—"}
+                sub={cf.rank ?? undefined}
+                accent={getRankColor(cf.rank)}
+              />
+              <StatCard
+                label="Max Rating"
+                value={cf.maxRating ?? "—"}
+              />
+              <StatCard
+                label="Problems Solved"
+                value={cf.problemsSolved}
+                accent="text-emerald-400"
+              />
+              <StatCard
+                label="Best Contest Rank"
+                value={bestContestRank ? `#${bestContestRank}` : "—"}
+                accent="text-amber-400"
+              />
+            </div>
+
+            <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">
+                  Rating History
+                </h3>
+                <RatingLineChart data={cf.contestHistory} />
+              </div>
+
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">
+                  Topics Solved
+                </h3>
+                <TopicBarChart data={cf.topicStats} />
+              </div>
+            </div>
+
+            {cf.contestHistory.length > 0 && (
+              <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">
+                  Recent Contests
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-zinc-800 text-xs uppercase tracking-wider text-zinc-500">
+                        <th className="pb-3 pr-4">Contest</th>
+                        <th className="pb-3 pr-4">Rank</th>
+                        <th className="pb-3 pr-4">Rating</th>
+                        <th className="pb-3">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cf.contestHistory
+                        .slice(-10)
+                        .reverse()
+                        .map((c, i) => (
+                          <tr
+                            key={i}
+                            className="border-b border-zinc-800/50 text-zinc-300"
+                          >
+                            <td className="py-2.5 pr-4 font-medium">
+                              {c.contestName}
+                            </td>
+                            <td className="py-2.5 pr-4">#{c.rank}</td>
+                            <td className="py-2.5 pr-4">{c.ratingAfter}</td>
+                            <td className="py-2.5 text-zinc-500">
+                              {new Date(c.date).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </main>
   );
