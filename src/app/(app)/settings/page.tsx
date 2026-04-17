@@ -10,6 +10,7 @@ const PLATFORMS = [
     accent: "border-blue-500/40",
     dot: "bg-blue-500",
     placeholder: "e.g. tourist",
+    syncEndpoint: "/api/sync/codeforces",
   },
   {
     id: "LEETCODE" as const,
@@ -17,6 +18,7 @@ const PLATFORMS = [
     accent: "border-orange-500/40",
     dot: "bg-orange-500",
     placeholder: "e.g. neal_wu",
+    syncEndpoint: null,
   },
   {
     id: "CODECHEF" as const,
@@ -24,6 +26,7 @@ const PLATFORMS = [
     accent: "border-amber-500/40",
     dot: "bg-amber-500",
     placeholder: "e.g. gennady",
+    syncEndpoint: null,
   },
   {
     id: "GFG" as const,
@@ -31,6 +34,7 @@ const PLATFORMS = [
     accent: "border-green-500/40",
     dot: "bg-green-500",
     placeholder: "e.g. your_handle",
+    syncEndpoint: null,
   },
 ] as const;
 
@@ -56,6 +60,16 @@ function getProfile(data: ProfileData | undefined, platform: PlatformId) {
   return data?.profiles?.find((p) => p.platform === platform);
 }
 
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
 export default function SettingsPage() {
   const { data, mutate, isLoading } = useSWR<ProfileData>("/api/profile", fetcher);
 
@@ -67,6 +81,13 @@ export default function SettingsPage() {
   });
 
   const [saving, setSaving] = useState<Record<PlatformId, boolean>>({
+    CODEFORCES: false,
+    LEETCODE: false,
+    CODECHEF: false,
+    GFG: false,
+  });
+
+  const [syncing, setSyncing] = useState<Record<PlatformId, boolean>>({
     CODEFORCES: false,
     LEETCODE: false,
     CODECHEF: false,
@@ -112,6 +133,39 @@ export default function SettingsPage() {
       method: "DELETE",
     });
     if (res.ok) mutate();
+  }
+
+  async function handleSync(platform: PlatformId, endpoint: string) {
+    setSyncing((s) => ({ ...s, [platform]: true }));
+    setFeedback((f) => ({ ...f, [platform]: null }));
+
+    try {
+      const res = await fetch(endpoint, { method: "POST" });
+      const result = await res.json();
+
+      if (res.ok) {
+        setFeedback((f) => ({
+          ...f,
+          [platform]: {
+            ok: true,
+            msg: `Synced! ${result.totalSolved} problems, Rating: ${result.rating ?? "N/A"}, +${result.newProblems} new`,
+          },
+        }));
+        mutate();
+      } else {
+        setFeedback((f) => ({
+          ...f,
+          [platform]: { ok: false, msg: result.error || "Sync failed" },
+        }));
+      }
+    } catch {
+      setFeedback((f) => ({
+        ...f,
+        [platform]: { ok: false, msg: "Network error during sync" },
+      }));
+    }
+
+    setSyncing((s) => ({ ...s, [platform]: false }));
   }
 
   return (
@@ -165,24 +219,44 @@ export default function SettingsPage() {
                           </span>
                         )}
                       </div>
-                      {existing && (
-                        <button
-                          onClick={() => handleRemove(platform.id)}
-                          className="text-xs text-zinc-600 transition hover:text-red-400"
-                        >
-                          Remove
-                        </button>
-                      )}
+                      <div className="flex items-center gap-3">
+                        {existing && platform.syncEndpoint && (
+                          <button
+                            id={`sync-${platform.id.toLowerCase()}`}
+                            onClick={() => handleSync(platform.id, platform.syncEndpoint!)}
+                            disabled={syncing[platform.id]}
+                            className="rounded-lg border border-blue-600/50 px-3 py-1 text-xs font-medium text-blue-400 transition hover:bg-blue-600/10 disabled:opacity-50"
+                          >
+                            {syncing[platform.id] ? (
+                              <span className="flex items-center gap-1.5">
+                                <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
+                                Syncing…
+                              </span>
+                            ) : (
+                              "Sync now"
+                            )}
+                          </button>
+                        )}
+                        {existing && (
+                          <button
+                            onClick={() => handleRemove(platform.id)}
+                            className="text-xs text-zinc-600 transition hover:text-red-400"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {existing && (
-                      <div className="mt-3 flex gap-4 text-xs text-zinc-500">
+                      <div className="mt-3 flex flex-wrap gap-4 text-xs text-zinc-500">
                         <span>{existing.problemsSolved} problems solved</span>
                         {existing.rating && <span>Rating: {existing.rating}</span>}
                         {existing.lastFetched && (
-                          <span>
-                            Synced: {new Date(existing.lastFetched).toLocaleDateString()}
-                          </span>
+                          <span>Synced: {timeAgo(existing.lastFetched)}</span>
+                        )}
+                        {!platform.syncEndpoint && (
+                          <span className="italic text-zinc-600">Sync coming soon</span>
                         )}
                       </div>
                     )}
