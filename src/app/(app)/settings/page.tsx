@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
+import toast from "react-hot-toast";
 
 const PLATFORMS = [
   {
@@ -125,6 +126,9 @@ export default function SettingsPage() {
     if (res.ok) {
       setHandles((h) => ({ ...h, [platform]: "" }));
       mutate();
+      toast.success("Handle saved");
+    } else {
+      toast.error("Failed to save handle");
     }
   }
 
@@ -132,7 +136,10 @@ export default function SettingsPage() {
     const res = await fetch(`/api/profile/${platform.toLowerCase()}`, {
       method: "DELETE",
     });
-    if (res.ok) mutate();
+    if (res.ok) {
+      mutate();
+      toast.success("Handle removed");
+    }
   }
 
   async function handleSync(platform: PlatformId, endpoint: string) {
@@ -152,6 +159,7 @@ export default function SettingsPage() {
           },
         }));
         mutate();
+        toast.success(`Synced! +${result.newProblems} new problems found`);
       } else {
         setFeedback((f) => ({
           ...f,
