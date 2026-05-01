@@ -132,8 +132,22 @@ export default function DashboardPage() {
   const cf = data?.platforms?.CODEFORCES as PlatformData | undefined;
   const lc = data?.platforms?.LEETCODE as PlatformData | undefined;
   const cc = data?.platforms?.CODECHEF as PlatformData | undefined;
+  const gfg = data?.platforms?.GFG as PlatformData | undefined;
 
-  const hasAnyPlatform = cf || lc || cc;
+  const hasAnyPlatform = cf || lc || cc || gfg;
+
+  const gfgRaw = gfg?.rawData as {
+    codingScore?: number;
+    institute?: string;
+    instituteRank?: number;
+    school?: number;
+    basic?: number;
+    easy?: number;
+    medium?: number;
+    hard?: number;
+    currentStreak?: number;
+    maxStreak?: number;
+  } | null;
 
   const ccRaw = cc?.rawData as {
     currentRating?: number;
@@ -359,6 +373,61 @@ export default function DashboardPage() {
                     sub={ccRaw?.countryRank ? `Country rank: #${ccRaw.countryRank.toLocaleString()}` : undefined}
                   />
                 </div>
+              </section>
+            )}
+
+            {gfg && (
+              <section>
+                <SectionHeader
+                  color="bg-green-500"
+                  label="GeeksforGeeks"
+                  username={gfg.username}
+                />
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <StatCard
+                    label="Coding Score"
+                    value={gfgRaw?.codingScore ?? gfg.rating ?? "—"}
+                    sub={gfgRaw?.institute || undefined}
+                    accent="text-green-400"
+                  />
+                  <StatCard
+                    label="Total Solved"
+                    value={gfg.problemsSolved}
+                    sub={
+                      gfgRaw?.instituteRank
+                        ? `Institute rank: #${gfgRaw.instituteRank}`
+                        : undefined
+                    }
+                  />
+                  <StatCard
+                    label="Easy + Medium"
+                    value={
+                      (gfgRaw?.easy ?? 0) + (gfgRaw?.medium ?? 0)
+                    }
+                    sub={`Easy: ${gfgRaw?.easy ?? 0}  ·  Medium: ${gfgRaw?.medium ?? 0}`}
+                    accent="text-emerald-400"
+                  />
+                  <StatCard
+                    label="Hard"
+                    value={gfgRaw?.hard ?? "—"}
+                    sub={
+                      gfgRaw?.currentStreak
+                        ? `Streak: ${gfgRaw.currentStreak} days`
+                        : undefined
+                    }
+                    accent="text-red-400"
+                  />
+                </div>
+
+                {gfg.topicStats.length > 0 && (
+                  <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                    <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">
+                      Difficulty Breakdown
+                    </h3>
+                    <TopicBarChart data={gfg.topicStats} />
+                  </div>
+                )}
               </section>
             )}
           </div>
