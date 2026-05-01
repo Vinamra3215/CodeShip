@@ -102,6 +102,8 @@ export default function SettingsPage() {
     GFG: null,
   });
 
+  const [syncingAll, setSyncingAll] = useState(false);
+
   async function handleSave(platform: PlatformId) {
     const username = handles[platform].trim() || getProfile(data, platform)?.username || "";
     if (!username) return;
@@ -176,13 +178,51 @@ export default function SettingsPage() {
     setSyncing((s) => ({ ...s, [platform]: false }));
   }
 
+  async function handleSyncAll() {
+    setSyncingAll(true);
+    try {
+      const res = await fetch("/api/sync/all", { method: "POST" });
+      const result = await res.json();
+      const ok = Object.values(
+        result.results as Record<string, { status: string }>
+      ).filter((r) => r.status === "ok").length;
+      if (ok > 0) {
+        toast.success(`Synced ${ok} platform${ok > 1 ? "s" : ""}! +${result.totalNewProblems} new problems`);
+      } else {
+        toast.error("No platforms were synced.");
+      }
+      mutate();
+    } catch {
+      toast.error("Sync All failed. Check your connection.");
+    }
+    setSyncingAll(false);
+  }
+
   return (
     <main className="px-4 py-10">
       <div className="mx-auto max-w-2xl">
-        <h1 className="text-2xl font-bold text-white">Settings</h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          Connect your competitive programming accounts to start tracking.
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Settings</h1>
+            <p className="mt-1 text-sm text-zinc-400">
+              Connect your competitive programming accounts to start tracking.
+            </p>
+          </div>
+          <button
+            onClick={handleSyncAll}
+            disabled={syncingAll}
+            className="mt-1 flex shrink-0 items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60"
+          >
+            {syncingAll ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Syncing...
+              </>
+            ) : (
+              "⚡ Sync All"
+            )}
+          </button>
+        </div>
 
         {isLoading ? (
           <div className="mt-10 text-center text-zinc-500">Loading...</div>
