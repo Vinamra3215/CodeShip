@@ -27,7 +27,7 @@ const PLATFORMS = [
     accent: "border-amber-500/40",
     dot: "bg-amber-500",
     placeholder: "e.g. gennady",
-    syncEndpoint: null,
+    syncEndpoint: "/api/sync/codechef",
   },
   {
     id: "GFG" as const,
