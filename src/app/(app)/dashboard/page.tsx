@@ -75,6 +75,26 @@ function StatCard({
   );
 }
 
+function SectionHeader({
+  color,
+  label,
+  username,
+}: {
+  color: string;
+  label: string;
+  username: string;
+}) {
+  return (
+    <div className="mb-4 flex items-center gap-3">
+      <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
+      <h2 className="text-lg font-semibold text-white">{label}</h2>
+      <span className="rounded-full bg-zinc-800 px-2.5 py-0.5 text-xs text-zinc-400">
+        @{username}
+      </span>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { data, isLoading, error } = useSWR<DashboardData>(
     "/api/dashboard",
@@ -110,10 +130,22 @@ export default function DashboardPage() {
   }
 
   const cf = data?.platforms?.CODEFORCES as PlatformData | undefined;
+  const lc = data?.platforms?.LEETCODE as PlatformData | undefined;
 
-  const bestContestRank = cf?.contestHistory?.length
+  const hasAnyPlatform = cf || lc;
+
+  const bestCFRank = cf?.contestHistory?.length
     ? Math.min(...cf.contestHistory.map((c) => c.rank))
     : null;
+
+  const lcRaw = lc?.rawData as {
+    easySolved?: number;
+    mediumSolved?: number;
+    hardSolved?: number;
+    ranking?: number;
+    contestRating?: number;
+    topPercentage?: number;
+  } | null;
 
   return (
     <main className="px-4 py-10">
@@ -127,7 +159,7 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {!cf ? (
+        {!hasAnyPlatform ? (
           <div className="rounded-xl border border-dashed border-zinc-700 bg-zinc-900/50 p-12 text-center">
             <p className="text-lg font-medium text-zinc-300">
               No platforms connected yet
@@ -140,98 +172,154 @@ export default function DashboardPage() {
               >
                 Settings
               </Link>{" "}
-              to add your Codeforces handle, then sync your data.
+              to add your Codeforces or LeetCode handle, then sync your data.
             </p>
           </div>
         ) : (
-          <>
-            <div className="mb-4 flex items-center gap-3">
-              <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
-              <h2 className="text-lg font-semibold text-white">Codeforces</h2>
-              <span className="rounded-full bg-zinc-800 px-2.5 py-0.5 text-xs text-zinc-400">
-                @{cf.username}
-              </span>
-            </div>
+          <div className="space-y-14">
+            {cf && (
+              <section>
+                <SectionHeader
+                  color="bg-blue-500"
+                  label="Codeforces"
+                  username={cf.username}
+                />
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard
-                label="Current Rating"
-                value={cf.rating ?? "—"}
-                sub={cf.rank ?? undefined}
-                accent={getRankColor(cf.rank)}
-              />
-              <StatCard
-                label="Max Rating"
-                value={cf.maxRating ?? "—"}
-              />
-              <StatCard
-                label="Problems Solved"
-                value={cf.problemsSolved}
-                accent="text-emerald-400"
-              />
-              <StatCard
-                label="Best Contest Rank"
-                value={bestContestRank ? `#${bestContestRank}` : "—"}
-                accent="text-amber-400"
-              />
-            </div>
-
-            <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-                <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">
-                  Rating History
-                </h3>
-                <RatingLineChart data={cf.contestHistory} />
-              </div>
-
-              <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-                <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">
-                  Topics Solved
-                </h3>
-                <TopicBarChart data={cf.topicStats} />
-              </div>
-            </div>
-
-            {cf.contestHistory.length > 0 && (
-              <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-                <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">
-                  Recent Contests
-                </h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-zinc-800 text-xs uppercase tracking-wider text-zinc-500">
-                        <th className="pb-3 pr-4">Contest</th>
-                        <th className="pb-3 pr-4">Rank</th>
-                        <th className="pb-3 pr-4">Rating</th>
-                        <th className="pb-3">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {cf.contestHistory
-                        .slice(-10)
-                        .reverse()
-                        .map((c, i) => (
-                          <tr
-                            key={i}
-                            className="border-b border-zinc-800/50 text-zinc-300"
-                          >
-                            <td className="py-2.5 pr-4 font-medium">
-                              {c.contestName}
-                            </td>
-                            <td className="py-2.5 pr-4">#{c.rank}</td>
-                            <td className="py-2.5 pr-4">{c.ratingAfter}</td>
-                            <td className="py-2.5 text-zinc-500">
-                              {new Date(c.date).toLocaleDateString()}
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <StatCard
+                    label="Current Rating"
+                    value={cf.rating ?? "—"}
+                    sub={cf.rank ?? undefined}
+                    accent={getRankColor(cf.rank)}
+                  />
+                  <StatCard label="Max Rating" value={cf.maxRating ?? "—"} />
+                  <StatCard
+                    label="Problems Solved"
+                    value={cf.problemsSolved}
+                    accent="text-emerald-400"
+                  />
+                  <StatCard
+                    label="Best Contest Rank"
+                    value={bestCFRank ? `#${bestCFRank}` : "—"}
+                    accent="text-amber-400"
+                  />
                 </div>
-              </div>
+
+                <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                    <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">
+                      Rating History
+                    </h3>
+                    <RatingLineChart data={cf.contestHistory} />
+                  </div>
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                    <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">
+                      Topics Solved
+                    </h3>
+                    <TopicBarChart data={cf.topicStats} />
+                  </div>
+                </div>
+
+                {cf.contestHistory.length > 0 && (
+                  <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                    <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">
+                      Recent Contests
+                    </h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm">
+                        <thead>
+                          <tr className="border-b border-zinc-800 text-xs uppercase tracking-wider text-zinc-500">
+                            <th className="pb-3 pr-4">Contest</th>
+                            <th className="pb-3 pr-4">Rank</th>
+                            <th className="pb-3 pr-4">Rating</th>
+                            <th className="pb-3">Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {cf.contestHistory
+                            .slice(-10)
+                            .reverse()
+                            .map((c, i) => (
+                              <tr
+                                key={i}
+                                className="border-b border-zinc-800/50 text-zinc-300"
+                              >
+                                <td className="py-2.5 pr-4 font-medium">
+                                  {c.contestName}
+                                </td>
+                                <td className="py-2.5 pr-4">#{c.rank}</td>
+                                <td className="py-2.5 pr-4">{c.ratingAfter}</td>
+                                <td className="py-2.5 text-zinc-500">
+                                  {new Date(c.date).toLocaleDateString()}
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </section>
             )}
-          </>
+
+            {lc && (
+              <section>
+                <SectionHeader
+                  color="bg-orange-500"
+                  label="LeetCode"
+                  username={lc.username}
+                />
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <StatCard
+                    label="Easy Solved"
+                    value={lcRaw?.easySolved ?? lc.problemsSolved}
+                    accent="text-emerald-400"
+                  />
+                  <StatCard
+                    label="Medium Solved"
+                    value={lcRaw?.mediumSolved ?? "—"}
+                    accent="text-amber-400"
+                  />
+                  <StatCard
+                    label="Hard Solved"
+                    value={lcRaw?.hardSolved ?? "—"}
+                    accent="text-red-400"
+                  />
+                  <StatCard
+                    label="Global Rank"
+                    value={lcRaw?.ranking ? `#${lcRaw.ranking.toLocaleString()}` : "—"}
+                    sub={
+                      lcRaw?.contestRating
+                        ? `Contest rating: ${Math.round(lcRaw.contestRating)}`
+                        : undefined
+                    }
+                    accent="text-orange-400"
+                  />
+                </div>
+
+                {lc.topicStats.length > 0 && (
+                  <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">
+                        Topics Solved
+                      </h3>
+                      <TopicBarChart data={lc.topicStats} />
+                    </div>
+
+                    {lc.contestHistory.length > 0 && (
+                      <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">
+                          Contest History
+                        </h3>
+                        <RatingLineChart data={lc.contestHistory} />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
+            )}
+          </div>
         )}
       </div>
     </main>
