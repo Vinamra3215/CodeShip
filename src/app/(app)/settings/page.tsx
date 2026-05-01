@@ -19,7 +19,7 @@ const PLATFORMS = [
     accent: "border-orange-500/40",
     dot: "bg-orange-500",
     placeholder: "e.g. neal_wu",
-    syncEndpoint: null,
+    syncEndpoint: "/api/sync/leetcode",
   },
   {
     id: "CODECHEF" as const,
