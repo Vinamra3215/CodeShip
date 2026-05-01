@@ -35,7 +35,7 @@ const PLATFORMS = [
     accent: "border-green-500/40",
     dot: "bg-green-500",
     placeholder: "e.g. your_handle",
-    syncEndpoint: null,
+    syncEndpoint: "/api/sync/gfg",
   },
 ] as const;
 
