@@ -131,8 +131,17 @@ export default function DashboardPage() {
 
   const cf = data?.platforms?.CODEFORCES as PlatformData | undefined;
   const lc = data?.platforms?.LEETCODE as PlatformData | undefined;
+  const cc = data?.platforms?.CODECHEF as PlatformData | undefined;
 
-  const hasAnyPlatform = cf || lc;
+  const hasAnyPlatform = cf || lc || cc;
+
+  const ccRaw = cc?.rawData as {
+    currentRating?: number;
+    highestRating?: number;
+    globalRank?: number;
+    countryRank?: number;
+    stars?: string;
+  } | null;
 
   const bestCFRank = cf?.contestHistory?.length
     ? Math.min(...cf.contestHistory.map((c) => c.rank))
@@ -317,6 +326,39 @@ export default function DashboardPage() {
                     )}
                   </div>
                 )}
+              </section>
+            )}
+
+            {cc && (
+              <section>
+                <SectionHeader
+                  color="bg-amber-500"
+                  label="CodeChef"
+                  username={cc.username}
+                />
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <StatCard
+                    label="Rating"
+                    value={ccRaw?.currentRating ?? cc.rating ?? "—"}
+                    sub={ccRaw?.stars ?? cc.rank ?? undefined}
+                    accent="text-amber-400"
+                  />
+                  <StatCard
+                    label="Highest Rating"
+                    value={ccRaw?.highestRating ?? cc.maxRating ?? "—"}
+                  />
+                  <StatCard
+                    label="Global Rank"
+                    value={ccRaw?.globalRank ? `#${ccRaw.globalRank.toLocaleString()}` : "—"}
+                    accent="text-emerald-400"
+                  />
+                  <StatCard
+                    label="Problems Solved"
+                    value={cc.problemsSolved}
+                    sub={ccRaw?.countryRank ? `Country rank: #${ccRaw.countryRank.toLocaleString()}` : undefined}
+                  />
+                </div>
               </section>
             )}
           </div>
