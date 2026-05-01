@@ -4,6 +4,7 @@ import useSWR from "swr";
 import Link from "next/link";
 import TopicBarChart from "@/components/charts/TopicBarChart";
 import RatingLineChart from "@/components/charts/RatingLineChart";
+import PlatformDonutChart from "@/components/charts/PlatformDonutChart";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -200,6 +201,37 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="space-y-14">
+
+            {hasAnyPlatform && (
+              <section>
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Total Problems Solved</p>
+                    <p className="mt-2 text-5xl font-bold text-white">
+                      {(
+                        (cf?.problemsSolved ?? 0) +
+                        (lc?.problemsSolved ?? 0) +
+                        (cc?.problemsSolved ?? 0) +
+                        (gfg?.problemsSolved ?? 0)
+                      ).toLocaleString()}
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-500">across all connected platforms</p>
+                  </div>
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">By Platform</p>
+                    <PlatformDonutChart
+                      data={[
+                        { platform: "Codeforces", solved: cf?.problemsSolved ?? 0 },
+                        { platform: "LeetCode", solved: lc?.problemsSolved ?? 0 },
+                        { platform: "CodeChef", solved: cc?.problemsSolved ?? 0 },
+                        { platform: "GeeksforGeeks", solved: gfg?.problemsSolved ?? 0 },
+                      ]}
+                    />
+                  </div>
+                </div>
+              </section>
+            )}
+
             {cf && (
               <section>
                 <SectionHeader
