@@ -5,6 +5,8 @@ import Link from "next/link";
 import TopicBarChart from "@/components/charts/TopicBarChart";
 import RatingLineChart from "@/components/charts/RatingLineChart";
 import PlatformDonutChart from "@/components/charts/PlatformDonutChart";
+import TopicSummaryChart from "@/components/charts/TopicSummaryChart";
+import DifficultyBreakdownChart from "@/components/charts/DifficultyBreakdownChart";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -460,6 +462,59 @@ export default function DashboardPage() {
                     <TopicBarChart data={gfg.topicStats} />
                   </div>
                 )}
+              </section>
+            )}
+
+            {hasAnyPlatform && (
+              <section>
+                <div className="mb-4 flex items-center gap-3">
+                  <span className="h-2.5 w-2.5 rounded-full bg-violet-500" />
+                  <h2 className="text-lg font-semibold text-white">Cross-Platform Insights</h2>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  {(cf || lc) && (
+                    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">
+                        Top Topics (CF + LC)
+                      </h3>
+                      <TopicSummaryChart
+                        platforms={[
+                          ...(cf ? [{ name: "CODEFORCES" as const, topicStats: cf.topicStats }] : []),
+                          ...(lc ? [{ name: "LEETCODE" as const, topicStats: lc.topicStats }] : []),
+                        ]}
+                      />
+                    </div>
+                  )}
+
+                  {(lc || gfg) && (
+                    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">
+                        Difficulty Breakdown
+                      </h3>
+                      <DifficultyBreakdownChart
+                        data={[
+                          ...(lc && lcRaw
+                            ? [{
+                                platform: "LeetCode",
+                                Easy: lcRaw.easySolved ?? 0,
+                                Medium: lcRaw.mediumSolved ?? 0,
+                                Hard: lcRaw.hardSolved ?? 0,
+                              }]
+                            : []),
+                          ...(gfg && gfgRaw
+                            ? [{
+                                platform: "GFG",
+                                Easy: gfgRaw.easy ?? 0,
+                                Medium: gfgRaw.medium ?? 0,
+                                Hard: gfgRaw.hard ?? 0,
+                              }]
+                            : []),
+                        ]}
+                      />
+                    </div>
+                  )}
+                </div>
               </section>
             )}
           </div>
