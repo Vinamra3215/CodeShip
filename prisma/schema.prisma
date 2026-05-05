@@ -28,15 +28,16 @@ enum SyncTrigger {
 }
 
 model User {
-  id           String            @id @default(cuid())
-  email        String            @unique
-  passwordHash String
-  name         String
-  college      String            @default("IIT Jodhpur")
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  profiles     PlatformProfile[]
-  syncJobs     SyncJob[]
+  id             String            @id @default(cuid())
+  email          String            @unique
+  passwordHash   String
+  name           String
+  college        String            @default("IIT Jodhpur")
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  profiles       PlatformProfile[]
+  syncJobs       SyncJob[]
+  watchedHandles WatchedHandle[]
 
   @@map("users")
 }
@@ -104,4 +105,32 @@ model SyncJob {
   @@index([userId, status])
   @@index([userId, platform])
   @@map("sync_jobs")
+}
+
+model DiscoveredUser {
+  id           String   @id @default(cuid())
+  cfHandle     String   @unique
+  cfRating     Int      @default(0)
+  cfMaxRating  Int      @default(0)
+  cfRank       String?
+  organization String?
+  avatar       String?
+  country      String?
+  discoveredAt DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([cfRating])
+  @@map("discovered_users")
+}
+
+model WatchedHandle {
+  id       String   @id @default(cuid())
+  userId   String
+  cfHandle String
+  addedAt  DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cfHandle])
+  @@index([userId])
+  @@map("watched_handles")
 }
