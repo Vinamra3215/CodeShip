@@ -8,6 +8,8 @@ import PlatformDonutChart from "@/components/charts/PlatformDonutChart";
 import ActivityHeatmap from "@/components/charts/ActivityHeatmap";
 import StreakCard from "@/components/StreakCard";
 import MultiPlatformRatingChart from "@/components/charts/MultiPlatformRatingChart";
+import TopicDonutChart from "@/components/charts/TopicDonutChart";
+import PlatformTopicMatrix from "@/components/charts/PlatformTopicMatrix";
 import { Platform } from "@prisma/client";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -247,6 +249,55 @@ export default function AnalyticsPage() {
               </div>
             )}
           </div>
+
+          {(() => {
+            const allTopics = new Map<string, { count: number; platforms: Map<string, number> }>();
+            const platformNames: string[] = [];
+            for (const p of [cf, lc, cc, gfg]) {
+              if (!p || !p.topicStats.length) continue;
+              platformNames.push(p.platform);
+              for (const t of p.topicStats) {
+                const key = t.topicName.toLowerCase();
+                if (!allTopics.has(key)) {
+                  allTopics.set(key, { count: 0, platforms: new Map() });
+                }
+                const entry = allTopics.get(key)!;
+                entry.count += t.problemsCount;
+                entry.platforms.set(p.platform, (entry.platforms.get(p.platform) ?? 0) + t.problemsCount);
+              }
+            }
+            const sorted = [...allTopics.entries()]
+              .map(([name, v]) => ({
+                topicName: name,
+                count: v.count,
+                platforms: [...v.platforms.entries()].map(([n, c]) => ({ name: n, count: c })),
+              }))
+              .sort((a, b) => b.count - a.count);
+
+            const matrixData = sorted.slice(0, 20).map((t) => ({
+              topic: t.topicName,
+              platforms: Object.fromEntries(t.platforms.map((p) => [p.name, p.count])),
+            }));
+
+            if (sorted.length === 0) return null;
+
+            return (
+              <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                  <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">
+                    Topic Distribution (Top 15)
+                  </h3>
+                  <TopicDonutChart data={sorted.slice(0, 15)} />
+                </div>
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                  <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">
+                    Topic × Platform Matrix
+                  </h3>
+                  <PlatformTopicMatrix data={matrixData} platforms={platformNames} />
+                </div>
+              </div>
+            );
+          })()}
         </section>
 
         <section className="mt-10">
