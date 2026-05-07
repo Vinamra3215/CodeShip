@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/db";
+import { withCache } from "@/lib/cache";
 import { Platform } from "@prisma/client";
 
 function compositeScore(cfRating: number, totalSolved: number): number {
@@ -20,6 +21,9 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
   const pageSize = 20;
   const skip = (page - 1) * pageSize;
+  // Cache the full sorted list per user+sort (15 min TTL)
+  const cacheKey = `leaderboard:${userId}:${sort}`;
+  const allEntries = await withCache(cacheKey, 900, async () => {
 
   const registeredUsers = await prisma.user.findMany({
     select: {
@@ -161,14 +165,17 @@ export async function GET(req: NextRequest) {
   };
 
   const sorted = entries.sort(sortFn[sort] ?? sortFn.composite);
-  const ranked = sorted.map((e, i) => ({ ...e, rank: i + 1 }));
-  const paginated = ranked.slice(skip, skip + pageSize);
+  return sorted.map((e, i) => ({ ...e, rank: i + 1 }));
+
+  }); // end withCache
+
+  const paginated = allEntries.slice(skip, skip + pageSize);
 
   return NextResponse.json({
     entries: paginated,
-    total: sorted.length,
+    total: allEntries.length,
     page,
     pageSize,
-    totalPages: Math.ceil(sorted.length / pageSize),
+    totalPages: Math.ceil(allEntries.length / pageSize),
   });
 }

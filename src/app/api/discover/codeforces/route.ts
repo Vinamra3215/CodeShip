@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/db";
+import { withCache } from "@/lib/cache";
 
 const IITJ_ORG_VARIANTS = new Set([
   "iit jodhpur",
@@ -35,29 +36,28 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const response = await fetch(
-    "https://codeforces.com/api/user.ratedList?activeOnly=false&includeRetired=true",
-    { next: { revalidate: 0 } }
-  );
+  // Cache the rated list for 24 hours (the fetch takes ~30s)
+  const iitjUsers = await withCache<CFRatedUser[]>(
+    "cf:ratedlist:iitj",
+    86400, // 24 hours
+    async () => {
+      const response = await fetch(
+        "https://codeforces.com/api/user.ratedList?activeOnly=false&includeRetired=true",
+        { next: { revalidate: 0 } }
+      );
 
-  if (!response.ok) {
-    return NextResponse.json(
-      { error: `CF API returned ${response.status}` },
-      { status: 502 }
-    );
-  }
+      if (!response.ok) {
+        throw new Error(`CF API returned ${response.status}`);
+      }
 
-  const json = await response.json();
+      const json = await response.json();
 
-  if (json.status !== "OK") {
-    return NextResponse.json(
-      { error: json.comment ?? "CF API error" },
-      { status: 502 }
-    );
-  }
+      if (json.status !== "OK") {
+        throw new Error(json.comment ?? "CF API error");
+      }
 
-  const iitjUsers: CFRatedUser[] = (json.result as CFRatedUser[]).filter((u) =>
-    isIITJ(u.organization)
+      return (json.result as CFRatedUser[]).filter((u) => isIITJ(u.organization));
+    }
   );
 
   const upserts = iitjUsers.map((u) =>

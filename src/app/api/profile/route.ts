@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/db";
+import { withCache, invalidateCache } from "@/lib/cache";
 import { z } from "zod";
 
 export async function GET() {
@@ -9,28 +10,35 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      college: true,
-      createdAt: true,
-      profiles: {
+  const userId = session.user.id;
+
+  const user = await withCache(
+    `dashboard:${userId}`,
+    3600, // 1 hour
+    () =>
+      prisma.user.findUnique({
+        where: { id: userId },
         select: {
           id: true,
-          platform: true,
-          username: true,
-          rating: true,
-          maxRating: true,
-          rank: true,
-          problemsSolved: true,
-          lastFetched: true,
+          name: true,
+          email: true,
+          college: true,
+          createdAt: true,
+          profiles: {
+            select: {
+              id: true,
+              platform: true,
+              username: true,
+              rating: true,
+              maxRating: true,
+              rank: true,
+              problemsSolved: true,
+              lastFetched: true,
+            },
+          },
         },
-      },
-    },
-  });
+      })
+  );
 
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -65,6 +73,9 @@ export async function PATCH(request: Request) {
     update: { username },
     select: { id: true, platform: true, username: true, lastFetched: true },
   });
+
+  // Bust dashboard cache so next GET picks up the new handle
+  await invalidateCache(`dashboard:${session.user.id}`);
 
   return NextResponse.json(profile);
 }
